@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="mask-icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"> <!-- for Safari-->
+    <link rel="manifest" href="/site.webmanifest">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <title>Spatiality</title>
+    
+    <script src="third-party/p5.js"></script>
+    <script src="third-party/p5.easycam.js"></script>
+  </head>
+  <body>
+    <header>
+      <nav>
+        <div class="nav-section left">
+          <h1>
+            <a href="/" id="name">Spatiality</a></h1>
+          → <dropdown-menu class="dropdown-big">
+              <span slot="button-text">Projects</span>
+              <projects-list></projects-list>
+            </dropdown-menu>
+          → <input type="text" id="project-name-input" />
+        </div>
+        
+        <div class="nav-section right">
+          <span id="api-key-notice">Enter OpenAI API Key →</span>
+          <dropdown-menu class="dropdown-right dropdown-wide">
+            <span slot="button-text">Settings</span>
+            <ul>
+              <li>
+                <label>OpenAI API Key</label>
+                <div id="open-api-key-form">
+                  <input type="password" id="openai-api-key" autocomplete="new-password" />
+                  <button id="toggle-openai-key-visibility">👁️</button>
+                </div>
+                <p class="small">Note that this isn't best practice to enter an API key into a web app
+                  like this. While it isn't stored outside of the browser, a malicious
+                  script or browser extension could still access it. Ensure your account
+                  has strict limits on API spend and change this API key often.</p>
+              </li>
+            </ul>
+          </dropdown-menu>
+          
+          <dropdown-menu class="dropdown-right dropdown-wide">
+            <span slot="button-text">About</span>
+            <p>Spatiality is a playground for experimenting with language-based spatial reasoning
+              via large language models (like GPT or LLaMa) and simulation environments (like
+              rigid-body physics engines or weather predictors).</p>
+            <p>This early version uses OpenAI's API, which requires an API key you can get
+              <a href="https://platform.openai.com/" target="_blank">here</a>.
+              Soon, this will leverage other hosted AI services with the same API.</p>
+            <p>The project is currently built by 
+              <a href="https://awmartin.xyz" target="_blank">William Martin</a> at 
+              <a href="https://spatialpixel.com" target="_blank">Spatial Pixel</a>.
+              The code is found <a href="https://github.com/spatialpixel/spatiality" target="_blank">here
+              on GitHub</a>.</p>
+          </dropdown-menu>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <div id="chat">
+        <div class="toolbar">
+          <dropdown-menu class="dropdown-wider">
+            <span slot="button-text">Context</span>
+            Context Window (Will disable after first chat message)
+            <textarea id="context-window"></textarea>
+          </dropdown-menu>
+        </div>
+        <div id="messages"></div>
+        <div id="input">
+          <textarea id="prompt-input"></textarea>
+          <button id="send-prompt">Send</button>
+        </div>
+      </div>
+
+      <div id="simulation">
+        <div class="toolbar">
+          <dropdown-menu>
+            <span slot="button-text">View</span>
+            <label><input type="checkbox" id="toggle-axes" checked> Axes</label><br>
+            <label><input type="checkbox" id="toggle-outlines" checked> Object Outlines</label><br>
+            <label><input type="checkbox" id="toggle-objects" checked> Object Fills</label><br>
+            <label><input type="checkbox" id="toggle-darkmode"> Dark</label>
+          </dropdown-menu>
+
+          <dropdown-menu>
+            <span slot="button-text">Physics</span>
+            <label><input type="checkbox" id="toggle-physics" checked> Compute physics</label><br>
+            <hr>
+            <button id="reset-physics">Reset Scene</button>
+          </dropdown-menu>
+          
+          <dropdown-menu>
+            <span slot="button-text">Objects</span>
+            <button id="objects-add-cube">Add cube</button>
+            <button id="objects-add-sphere">Add sphere</button>
+            <button id="remove-selected">Remove selected</button>
+            <hr>
+            <button id="drop-100-spheres">Drop 100 spheres</button>
+          </dropdown-menu>
+          
+          <dropdown-menu>
+            <span slot="button-text">LiDAR</span>
+            <label><input type="checkbox" id="toggle-lidar"> Show/Hide LiDAR</label>
+            <hr>
+            <button id="cast-rays">Cast Rays</button>
+            <button id="save-points">Save Points</button>
+            <button id="clear-points">Clear Points</button>
+          </dropdown-menu>
+        </div>
+        <div id="sketch"></div>
+        <div class="footnotes">left-click + drag = rotate | scroll = zoom | middle/right-click + drag = pan</div>
+      </div>
+      
+    </main>
+
+    <script type="module" src="/main.js"></script>
+    
+    <template id="projects-list-template">
+      <style>
+        :host {
+          --primary-color: #eac451;
+          --primary-color-lightened: #f4e1a8;
+        }
+        
+        button.action {
+          border: 2px solid var(--border-color);
+          border-radius: 3px;
+          color: var(--text-color);
+          background-color: var(--background-color);
+          padding: 5px 6px;
+          font-size: 1rem;
+        }
+        button.project {
+          font-size: 1.2rem;
+          border: none;
+          display: block;
+          color: var(--text-color);
+          background-color: var(--background-color);
+          padding: 4px;
+          width: 100%;
+          text-align: left;
+          border: none !important;
+        }
+        button:hover {
+          color: #222;
+          background-color: var(--primary-color-lightened);
+        }
+        button:active {
+          color: #222;
+          background-color: var(--primary-color);
+        }
+        button.project.current {
+          color: #222;
+          background-color: var(--primary-color);
+        }
+        
+        .actions {
+          display: flex;
+          flex-direction: row;
+          gap: 10px;
+          border-bottom: 2px solid var(--border-color);
+          padding-bottom: 6px;
+          margin-bottom: 10px;
+        }
+        .spacer {
+          flex-grow: 2;
+        }
+        #delete-project {
+          border-color: darkred;
+        }
+      </style>
+      
+      <div class="actions">
+        <button class="action" id="new-project">New Project</button>
+        <button class="action" id="save-project">Save Current Project</button>
+        <div class="spacer"></div>
+        <button class="action" id="delete-project">Delete Current Project</button>
+      </div>
+      <div class="projects">
+      </div>
+    </template>
+    
+    <template id="dropdown-menu-template">
+      <style>
+        :host {
+          --dropdown-right: initial;
+          --dropdown-width: 160px;
+          --dropdown-button-font-size: 1rem;
+          --dropdown-button-border: 2px solid black;
+          --primary-color: #eac451;
+          --primary-color-lightened: #f4e1a8;
+        }
+        
+        .dropdown {
+          position: relative;
+          display: inline-block;
+          font-family: 'Lexend', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+        }
+        .dropdown-content {
+          display: none;
+          position: absolute;
+          z-index: 1;
+          min-width: var(--dropdown-width);
+          min-height: 160px;
+          right: var(--dropdown-right);
+          max-height: 75vh;
+          padding: 8px;
+          color: var(--text-color);
+      
+          background-color: var(--background-color);
+          box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+          border: 2px solid var(--border-color);
+          border-radius: 3px;
+        
+          font-size: 1.0rem;
+          line-height: 1.5;
+        }
+      
+        .dropdown-content.show {
+            display: block;
+        }
+        .dropdown-content a {
+            color: var(--text-color);
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+        }
+        .dropdown-content a:hover {
+            background-color: #ddd;
+        }
+        
+        button {
+          font-family: 'Lexend', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+          border: var(--dropdown-button-border);
+          border-radius: 3px;
+          color: var(--text-color);
+          background-color: var(--background-color);
+          padding: 4px 6px;
+          font-size: var(--dropdown-button-font-size);
+          border-color: var(--border-color);
+        }
+        button:hover {
+          color: #222;
+          background-color: var(--primary-color-lightened);
+        }
+        button:active {
+          background-color: var(--primary-color);
+        }
+      
+        ::slotted(button) {
+          border: none;
+          display: block;
+          color: var(--text-color);
+          background-color: var(--background-color);
+          padding: 4px;
+          width: 100%;
+          text-align: left;
+          border: none !important;
+        }
+        ::slotted(button:hover) {
+          color: #222;
+          background-color: var(--primary-color-lightened);
+        }
+        ::slotted(button:active) {
+          background-color: var(--primary-color);
+        }
+        ::slotted(ul) {
+          list-style-type: none;
+          padding: 0;
+          margin: 0;
+          text-indent: 0;
+          font-size: 1.0rem;
+          color: var(--text-color);
+        }
+      </style>
+      <div class="dropdown">
+        <button class="dropdown-toggle">
+          <slot name="button-text">Toggle</slot>
+        </button>
+        
+        <div class="dropdown-content">
+            <slot></slot>
+        </div>
+      </div>
+    </template> <!-- end dropdown-menu-template -->
+
+  </body>
+</html>
